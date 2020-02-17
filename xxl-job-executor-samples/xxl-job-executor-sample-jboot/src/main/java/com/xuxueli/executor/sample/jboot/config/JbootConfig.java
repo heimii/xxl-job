@@ -19,10 +19,10 @@ public class JbootConfig extends JbootAppListenerBase {
     private void initXxlJobExecutor() {
 
         // registry jobhandler
-        XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler());
-        XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler());
-        XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler());
-        XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler());
+        XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler(), null);
+        XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler(), null);
+        XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler(), null);
+        XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler(), null);
 
         // init executor
         xxlJobExecutor = new XxlJobExecutor();
