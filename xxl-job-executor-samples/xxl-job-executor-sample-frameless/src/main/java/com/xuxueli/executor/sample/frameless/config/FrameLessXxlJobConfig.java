@@ -20,6 +20,7 @@ public class FrameLessXxlJobConfig {
 
 
     private static FrameLessXxlJobConfig instance = new FrameLessXxlJobConfig();
+
     public static FrameLessXxlJobConfig getInstance() {
         return instance;
     }
@@ -33,10 +34,10 @@ public class FrameLessXxlJobConfig {
     public void initXxlJobExecutor() {
 
         // registry jobhandler
-        XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler());
-        XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler());
-        XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler());
-        XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler());
+        XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler(), null);
+        XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler(), null);
+        XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler(), null);
+        XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler(), null);
 
         // load executor prop
         Properties xxlJobProp = loadProperties("xxl-job-executor.properties");
@@ -50,7 +51,8 @@ public class FrameLessXxlJobConfig {
         xxlJobExecutor.setPort(Integer.valueOf(xxlJobProp.getProperty("xxl.job.executor.port")));
         xxlJobExecutor.setAccessToken(xxlJobProp.getProperty("xxl.job.accessToken"));
         xxlJobExecutor.setLogPath(xxlJobProp.getProperty("xxl.job.executor.logpath"));
-        xxlJobExecutor.setLogRetentionDays(Integer.valueOf(xxlJobProp.getProperty("xxl.job.executor.logretentiondays")));
+        xxlJobExecutor.setLogRetentionDays(
+                Integer.valueOf(xxlJobProp.getProperty("xxl.job.executor.logretentiondays")));
 
         // start executor
         try {
@@ -75,7 +77,8 @@ public class FrameLessXxlJobConfig {
         try {
             ClassLoader loder = Thread.currentThread().getContextClassLoader();
 
-            in = new InputStreamReader(loder.getResourceAsStream(propertyFileName), "UTF-8");;
+            in = new InputStreamReader(loder.getResourceAsStream(propertyFileName), "UTF-8");
+            ;
             if (in != null) {
                 Properties prop = new Properties();
                 prop.load(in);

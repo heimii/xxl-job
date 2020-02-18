@@ -1,6 +1,11 @@
 package com.xuxueli.executor.sample.jfinal.config;
 
-import com.jfinal.config.*;
+import com.jfinal.config.Constants;
+import com.jfinal.config.Handlers;
+import com.jfinal.config.Interceptors;
+import com.jfinal.config.JFinalConfig;
+import com.jfinal.config.Plugins;
+import com.jfinal.config.Routes;
 import com.jfinal.kit.Prop;
 import com.jfinal.kit.PropKit;
 import com.xuxueli.executor.sample.jfinal.controller.IndexController;
@@ -16,75 +21,82 @@ import org.slf4j.LoggerFactory;
  * @author xuxueli 2017-08-11 14:17:41
  */
 public class JFinalCoreConfig extends JFinalConfig {
-	private Logger logger = LoggerFactory.getLogger(JFinalCoreConfig.class);
+    private Logger logger = LoggerFactory.getLogger(JFinalCoreConfig.class);
 
-	// ---------------------- xxl-job executor ----------------------
-	private XxlJobExecutor xxlJobExecutor = null;
-	private void initXxlJobExecutor() {
+    // ---------------------- xxl-job executor ----------------------
+    private XxlJobExecutor xxlJobExecutor = null;
 
-		// registry jobhandler
-		XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler());
-		XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler());
-		XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler());
-		XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler());
+    private void initXxlJobExecutor() {
 
-		// load executor prop
-		Prop xxlJobProp = PropKit.use("xxl-job-executor.properties");
+        // registry jobhandler
+        XxlJobExecutor.registJobHandler("demoJobHandler", new DemoJobHandler(), null);
+        XxlJobExecutor.registJobHandler("shardingJobHandler", new ShardingJobHandler(), null);
+        XxlJobExecutor.registJobHandler("httpJobHandler", new HttpJobHandler(), null);
+        XxlJobExecutor.registJobHandler("commandJobHandler", new CommandJobHandler(), null);
 
-		// init executor
-		xxlJobExecutor = new XxlJobExecutor();
-		xxlJobExecutor.setAdminAddresses(xxlJobProp.get("xxl.job.admin.addresses"));
-		xxlJobExecutor.setAppName(xxlJobProp.get("xxl.job.executor.appname"));
-		xxlJobExecutor.setIp(xxlJobProp.get("xxl.job.executor.ip"));
-		xxlJobExecutor.setPort(xxlJobProp.getInt("xxl.job.executor.port"));
-		xxlJobExecutor.setAccessToken(xxlJobProp.get("xxl.job.accessToken"));
-		xxlJobExecutor.setLogPath(xxlJobProp.get("xxl.job.executor.logpath"));
-		xxlJobExecutor.setLogRetentionDays(xxlJobProp.getInt("xxl.job.executor.logretentiondays"));
+        // load executor prop
+        Prop xxlJobProp = PropKit.use("xxl-job-executor.properties");
 
-		// start executor
-		try {
-			xxlJobExecutor.start();
-		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
-		}
-	}
-	private void destoryXxlJobExecutor() {
-		if (xxlJobExecutor != null) {
-			xxlJobExecutor.destroy();
-		}
-	}
+        // init executor
+        xxlJobExecutor = new XxlJobExecutor();
+        xxlJobExecutor.setAdminAddresses(xxlJobProp.get("xxl.job.admin.addresses"));
+        xxlJobExecutor.setAppName(xxlJobProp.get("xxl.job.executor.appname"));
+        xxlJobExecutor.setIp(xxlJobProp.get("xxl.job.executor.ip"));
+        xxlJobExecutor.setPort(xxlJobProp.getInt("xxl.job.executor.port"));
+        xxlJobExecutor.setAccessToken(xxlJobProp.get("xxl.job.accessToken"));
+        xxlJobExecutor.setLogPath(xxlJobProp.get("xxl.job.executor.logpath"));
+        xxlJobExecutor.setLogRetentionDays(xxlJobProp.getInt("xxl.job.executor.logretentiondays"));
 
-	// ---------------------- jfinal ----------------------
+        // start executor
+        try {
+            xxlJobExecutor.start();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
 
+    private void destoryXxlJobExecutor() {
+        if (xxlJobExecutor != null) {
+            xxlJobExecutor.destroy();
+        }
+    }
+
+    // ---------------------- jfinal ----------------------
+
+    @Override
 	public void configRoute(Routes route) {
-		route.add("/", IndexController.class);
-	}
+        route.add("/", IndexController.class);
+    }
 
-	@Override
-	public void afterJFinalStart() {
-		initXxlJobExecutor();
-	}
+    @Override
+    public void afterJFinalStart() {
+        initXxlJobExecutor();
+    }
 
-	@Override
-	public void beforeJFinalStop() {
-		destoryXxlJobExecutor();
-	}
+    @Override
+    public void beforeJFinalStop() {
+        destoryXxlJobExecutor();
+    }
 
+    @Override
 	public void configConstant(Constants constants) {
 
-	}
+    }
 
+    @Override
 	public void configPlugin(Plugins plugins) {
 
-	}
+    }
 
+    @Override
 	public void configInterceptor(Interceptors interceptors) {
 
-	}
+    }
 
+    @Override
 	public void configHandler(Handlers handlers) {
 
-	}
+    }
 
 
 }
