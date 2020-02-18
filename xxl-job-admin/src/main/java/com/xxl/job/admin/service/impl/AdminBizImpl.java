@@ -1,7 +1,9 @@
 package com.xxl.job.admin.service.impl;
 
+import com.xxl.job.admin.core.model.XxlJobGroup;
 import com.xxl.job.admin.core.model.XxlJobInfo;
 import com.xxl.job.admin.core.model.XxlJobLog;
+import com.xxl.job.admin.core.route.ExecutorRouteStrategyEnum;
 import com.xxl.job.admin.core.thread.JobTriggerPoolHelper;
 import com.xxl.job.admin.core.trigger.TriggerTypeEnum;
 import com.xxl.job.admin.core.util.I18nUtil;
@@ -9,17 +11,22 @@ import com.xxl.job.admin.dao.XxlJobGroupDao;
 import com.xxl.job.admin.dao.XxlJobInfoDao;
 import com.xxl.job.admin.dao.XxlJobLogDao;
 import com.xxl.job.admin.dao.XxlJobRegistryDao;
+import com.xxl.job.admin.service.XxlJobService;
 import com.xxl.job.core.biz.AdminBiz;
 import com.xxl.job.core.biz.model.HandleCallbackParam;
 import com.xxl.job.core.biz.model.JobRegistry;
 import com.xxl.job.core.biz.model.RegistryParam;
 import com.xxl.job.core.biz.model.ReturnT;
+import com.xxl.job.core.enums.ExecutorBlockStrategyEnum;
+import com.xxl.job.core.exception.JobException;
+import com.xxl.job.core.glue.GlueTypeEnum;
 import com.xxl.job.core.handler.IJobHandler;
+import com.xxl.job.core.handler.JobInfo;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import javax.annotation.Resource;
 import java.text.MessageFormat;
@@ -41,6 +48,8 @@ public class AdminBizImpl implements AdminBiz {
     private XxlJobRegistryDao xxlJobRegistryDao;
     @Resource
     private XxlJobGroupDao xxlJobGroupDao;
+    @Resource
+    private XxlJobService xxlJobService;
 
 
     @Override
@@ -135,12 +144,16 @@ public class AdminBizImpl implements AdminBiz {
 
     @Override
     public ReturnT<String> registry(RegistryParam registryParam) {
+        registerNode(registryParam);
+        return ReturnT.SUCCESS;
+    }
 
+    private void registerNode(RegistryParam registryParam) {
         // valid
-        if (!StringUtils.hasText(registryParam.getRegistryGroup())
-                || !StringUtils.hasText(registryParam.getRegistryKey())
-                || !StringUtils.hasText(registryParam.getRegistryValue())) {
-            return new ReturnT<String>(ReturnT.FAIL_CODE, "Illegal Argument.");
+        if (StringUtils.isEmpty(registryParam.getRegistryGroup())
+                || StringUtils.isEmpty(registryParam.getRegistryKey())
+                || StringUtils.isEmpty(registryParam.getRegistryValue())) {
+            throw new IllegalArgumentException("registryParam");
         }
 
         int ret = xxlJobRegistryDao.registryUpdate(registryParam.getRegistryGroup(), registryParam.getRegistryKey(),
@@ -152,16 +165,15 @@ public class AdminBizImpl implements AdminBiz {
             // fresh
             freshGroupRegistryInfo(registryParam);
         }
-        return ReturnT.SUCCESS;
     }
 
     @Override
     public ReturnT<String> registryRemove(RegistryParam registryParam) {
 
         // valid
-        if (!StringUtils.hasText(registryParam.getRegistryGroup())
-                || !StringUtils.hasText(registryParam.getRegistryKey())
-                || !StringUtils.hasText(registryParam.getRegistryValue())) {
+        if (StringUtils.isEmpty(registryParam.getRegistryGroup())
+                || StringUtils.isEmpty(registryParam.getRegistryKey())
+                || StringUtils.isEmpty(registryParam.getRegistryValue())) {
             return new ReturnT<String>(ReturnT.FAIL_CODE, "Illegal Argument.");
         }
 
@@ -177,8 +189,69 @@ public class AdminBizImpl implements AdminBiz {
 
     @Override
     public ReturnT<String> registerNode(JobRegistry registry) {
-        // TODO 实现注册
-        throw new NotImplementedException();
+        registerNode(new RegistryParam(registry.getRegistryGroup(), registry.getAppName(), registry.getAddress()));
+        XxlJobGroup jobGroup = saveJobGroup(registry);
+        saveJobs(registry, jobGroup);
+        return ReturnT.SUCCESS;
+    }
+
+    private void saveJobs(JobRegistry registry, XxlJobGroup jobGroup) {
+        // jobs
+        for (JobInfo job : registry.getJobs()) {
+            XxlJobInfo jobInfo = xxlJobInfoDao.loadByName(jobGroup.getId(), job.getName());
+            if (jobInfo != null) {
+                continue;
+            }
+            jobInfo = new XxlJobInfo();
+            jobInfo.setJobGroup(jobGroup.getId());
+            jobInfo.setExecutorHandler(job.getName());
+            jobInfo.setExecutorRouteStrategy(ExecutorRouteStrategyEnum.FIRST.toString());
+            jobInfo.setExecutorBlockStrategy(ExecutorBlockStrategyEnum.SERIAL_EXECUTION.toString());
+            jobInfo.setExecutorTimeout(0);
+            jobInfo.setExecutorFailRetryCount(0);
+            jobInfo.setGlueType(GlueTypeEnum.BEAN.getDesc());
+            jobInfo.setAddTime(new Date());
+            jobInfo.setAuthor("system");
+            jobInfo.setJobCron(job.getInitCron());
+            jobInfo.setJobDesc(job.getTitle());
+            jobInfo.setTriggerStatus(1);
+            ReturnT<String> result = xxlJobService.add(jobInfo);
+            if (result.getCode() != ReturnT.SUCCESS_CODE) {
+                throw new JobException(result.getMsg());
+            }
+        }
+    }
+
+    private XxlJobGroup saveJobGroup(JobRegistry registry) {
+        XxlJobGroup jobGroup = xxlJobGroupDao.findByName(registry.getAppName());
+        if (jobGroup == null) {
+            jobGroup = new XxlJobGroup();
+            jobGroup.setAppName(registry.getAppName());
+            jobGroup.setTitle(registry.getAppName());
+            jobGroup.setAddressType(0);
+            jobGroup.setOrder(1);
+            jobGroup.setAddressList(registry.getAddress());
+        } else {
+            String newAddressList = appendAddress(jobGroup.getAddressList(), registry.getAddress());
+            jobGroup.setAddressList(newAddressList);
+        }
+        if (jobGroup.getId() == 0) {
+            xxlJobGroupDao.save(jobGroup);
+        } else {
+            xxlJobGroupDao.update(jobGroup);
+        }
+        return jobGroup;
+    }
+
+    private String appendAddress(String baseAddress, String addressToAppend) {
+        String newAddressList = baseAddress;
+        String[] addressList = StringUtils.split(baseAddress, ',');
+        if (ArrayUtils.isEmpty(addressList)) {
+            newAddressList = addressToAppend;
+        } else if (!ArrayUtils.contains(addressList, addressToAppend)) {
+            newAddressList = baseAddress + "," + addressToAppend;
+        }
+        return newAddressList;
     }
 
     private void freshGroupRegistryInfo(RegistryParam registryParam) {

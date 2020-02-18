@@ -6,12 +6,14 @@ import com.xxl.job.admin.core.exception.XxlJobException;
 import com.xxl.job.admin.core.util.JacksonUtil;
 import com.xxl.job.core.biz.AdminBiz;
 import com.xxl.job.core.biz.model.HandleCallbackParam;
+import com.xxl.job.core.biz.model.JobRegistry;
 import com.xxl.job.core.biz.model.RegistryParam;
 import com.xxl.job.core.biz.model.ReturnT;
 import com.xxl.job.core.util.XxlJobRemotingUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.annotation.Resource;
@@ -34,10 +36,11 @@ public class JobApiController {
     /**
      * valid access token
      */
-    private void validAccessToken(HttpServletRequest request){
-        if (XxlJobAdminConfig.getAdminConfig().getAccessToken()!=null
-                && XxlJobAdminConfig.getAdminConfig().getAccessToken().trim().length()>0
-                && !XxlJobAdminConfig.getAdminConfig().getAccessToken().equals(request.getHeader(XxlJobRemotingUtil.XXL_RPC_ACCESS_TOKEN))) {
+    private void validAccessToken(HttpServletRequest request) {
+        if (XxlJobAdminConfig.getAdminConfig().getAccessToken() != null
+                && XxlJobAdminConfig.getAdminConfig().getAccessToken().trim().length() > 0
+                && !XxlJobAdminConfig.getAdminConfig().getAccessToken().equals(
+                request.getHeader(XxlJobRemotingUtil.XXL_RPC_ACCESS_TOKEN))) {
             throw new XxlJobException("The access token is wrong.");
         }
     }
@@ -45,7 +48,7 @@ public class JobApiController {
     /**
      * parse Param
      */
-    private Object parseParam(String data, Class<?> parametrized, Class<?>... parameterClasses){
+    private Object parseParam(String data, Class<?> parametrized, Class<?>... parameterClasses) {
         Object param = null;
         try {
             if (parameterClasses != null) {
@@ -53,8 +56,9 @@ public class JobApiController {
             } else {
                 param = JacksonUtil.readValue(data, parametrized);
             }
-        } catch (Exception e) { }
-        if (param==null) {
+        } catch (Exception e) {
+        }
+        if (param == null) {
             throw new XxlJobException("The request data invalid.");
         }
         return param;
@@ -70,18 +74,18 @@ public class JobApiController {
      */
     @RequestMapping("/callback")
     @ResponseBody
-    @PermissionLimit(limit=false)
+    @PermissionLimit(limit = false)
     public ReturnT<String> callback(HttpServletRequest request, @RequestBody(required = false) String data) {
         // valid
         validAccessToken(request);
 
         // param
-        List<HandleCallbackParam> callbackParamList = (List<HandleCallbackParam>) parseParam(data, List.class, HandleCallbackParam.class);
+        List<HandleCallbackParam> callbackParamList = (List<HandleCallbackParam>) parseParam(data, List.class,
+                HandleCallbackParam.class);
 
         // invoke
         return adminBiz.callback(callbackParamList);
     }
-
 
 
     /**
@@ -92,7 +96,7 @@ public class JobApiController {
      */
     @RequestMapping("/registry")
     @ResponseBody
-    @PermissionLimit(limit=false)
+    @PermissionLimit(limit = false)
     public ReturnT<String> registry(HttpServletRequest request, @RequestBody(required = false) String data) {
         // valid
         validAccessToken(request);
@@ -112,7 +116,7 @@ public class JobApiController {
      */
     @RequestMapping("/registryRemove")
     @ResponseBody
-    @PermissionLimit(limit=false)
+    @PermissionLimit(limit = false)
     public ReturnT<String> registryRemove(HttpServletRequest request, @RequestBody(required = false) String data) {
         // valid
         validAccessToken(request);
@@ -126,4 +130,11 @@ public class JobApiController {
 
     // ---------------------- job biz ----------------------
 
+    @RequestMapping(value = "/register-node", method = RequestMethod.POST)
+    @ResponseBody
+    @PermissionLimit(limit = false)
+    public ReturnT<String> registerNode(HttpServletRequest request, @RequestBody JobRegistry registry) {
+        validAccessToken(request);
+        return adminBiz.registerNode(registry);
+    }
 }
